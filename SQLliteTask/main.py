@@ -73,14 +73,79 @@ employee_unique_job_count = db.query("""
 SELECT COUNT(DISTINCT id_job_title) AS unique_job_count FROM employees;
 """)
 
+
+#агрегация
+employee_job_counts = db.query("""SELECT j.name AS job_title, COUNT(e.id) AS employee_count
+FROM employees e
+JOIN job_titles j ON e.id_job_title = j.id_job_title
+         GROUP BY e.id_job_title;""")
+
+employee_job_avg = db.query("""
+SELECT j.name AS job_title, AVG(e.id) AS avg_employee_id
+FROM employees e
+JOIN job_titles j ON e.id_job_title = j.id_job_title
+GROUP BY e.id_job_title;
+""")
+
+
+employee_job_having = db.query("""
+SELECT j.name AS job_title, COUNT(e.id) AS employee_count
+FROM employees e
+JOIN job_titles j ON e.id_job_title = j.id_job_title
+GROUP BY e.id_job_title
+HAVING COUNT(e.id) > 1;
+""")
+#join + where
+dev_employees = db.query("""
+SELECT e.surname, e.name, j.name
+FROM employees e
+JOIN job_titles j ON e.id_job_title = j.id_job_title
+WHERE j.name = 'Разработчик';
+""")
+
+
+manager_employees = db.query("""
+SELECT e.surname, e.name, j.name
+FROM employees e
+JOIN job_titles j ON e.id_job_title = j.id_job_title
+WHERE e.id > 2 AND j.name = 'Менеджер';
+""")
+
+
+non_designers = db.query("""
+SELECT e.surname, e.name, j.name
+FROM employees e
+JOIN job_titles j ON e.id_job_title = j.id_job_title
+WHERE j.name != 'Дизайнер';
+""")
 db.close()
-print("---Легкие запросы---")
+print("--- Легкие запросы ---")
 print(f"Общее количество сотрудников: {employee_count[0][0]}")
 print(f"Максимальный ID сотрудника: {employee_max_id[0][0]}")
 print(f"Имя сотрудника посередине: {employee_middle_name[0][0]}")
 print(f"Сумма ID должностей сотрудников: {employee_sum_job_ids[0][0]}")
 print(f"Количество уникальных должностей: {employee_unique_job_count[0][0]}")
 
+print("\n--- Агрегация ---")
+for row in employee_job_counts:
+    print(f"Должность: {row[0]}, количество сотрудников: {row[1]}")
+for row in employee_job_avg:
+    print(f"Должность: {row[0]}, средний ID сотрудника: {row[1]:.2f}")
+for row in employee_job_having:
+    print(f"Должность с более чем 1 сотрудником: {row[0]}, количество: {row[1]}")
+
+print("\n--- JOIN + WHERE ---")
+print("Все разработчики:")
+for row in dev_employees:
+    print(f"{row[0]} {row[1]} - {row[2]}")
+
+print("\nМенеджеры с ID > 2:")
+for row in manager_employees:
+    print(f"{row[0]} {row[1]} - {row[2]}")
+
+print("\nВсе сотрудники кроме дизайнеров:")
+for row in non_designers:
+    print(f"{row[0]} {row[1]} - {row[2]}")
 # Вывод
 print("Сотрудники с их должностями:")
 for employee in employees_with_job_titles:
