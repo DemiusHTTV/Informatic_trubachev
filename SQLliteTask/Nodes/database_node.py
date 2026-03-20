@@ -23,7 +23,9 @@ class Database:
         df = pd.read_excel(file_path, sheet_name=sheet_name)
         return df
     def read_csv(self,file_path:str):
-        cf =pd.read_csv(file_path)
+        df =pd.read_csv(file_path)
+        return df
+        
 
 
 

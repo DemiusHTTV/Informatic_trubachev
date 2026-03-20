@@ -34,25 +34,22 @@ def load_from_csv() -> None:
     db.execute("DELETE FROM employees")
     db.execute("DELETE FROM job_titles")
 
-    job_titles_csv = data_dir / "job_titles.csv"
-    with job_titles_csv.open(encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        job_titles_data = [
-            (int(row["id_job_title"]), row["name"]) for row in reader
-        ]
+    job_titles_df = db.read_csv(data_dir / "job_titles.csv")
+    job_titles_data = [
+        (int(row["id_job_title"]), row["name"])
+        for _, row in job_titles_df.iterrows()
+    ]
 
-    employees_csv = data_dir / "employees.csv"
-    with employees_csv.open(encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        employees_data = [
-            (
-                int(row["id"]),
-                row["surname"],
-                row["name"],
-                int(row["id_job_title"]),
-            )
-            for row in reader
-        ]
+    employees_df = db.read_csv(data_dir / "employees.csv")
+    employees_data = [
+        (
+            int(row["id"]),
+            row["surname"],
+            row["name"],
+            int(row["id_job_title"]),
+        )
+        for _, row in employees_df.iterrows()
+    ]
 
     db.executemany(
         "INSERT INTO job_titles (id_job_title, name) VALUES (?, ?)",

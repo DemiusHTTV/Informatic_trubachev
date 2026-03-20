@@ -118,6 +118,9 @@ FROM employees e
 JOIN job_titles j ON e.id_job_title = j.id_job_title
 WHERE j.name != 'Дизайнер';
 """)
+
+
+
 db.close()
 print("--- Легкие запросы ---")
 print(f"Общее количество сотрудников: {employee_count[0][0]}")
