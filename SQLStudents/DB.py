@@ -10,8 +10,10 @@ class DataBase:
                             id_group INtEGER FOREIGN KEY NOT NULL,
                             id_type_learning INTEGER FOREIGN KEY NOT NULL,
                             name TEXT NOT NULL,
+                            surname TEXT NOT NULL,
+                            father_name TEXT NOT NULL,
                             age INTEGER NOT NULL,
-                            grade TEXT NOT NULL)''')
+                            grade_mean TEXT NOT NULL)''')
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS levels
                             (id_level INTEGER PRIMARY KEY AUTOINCREMENT,
                             level_name TEXT NOT NULL)''')
