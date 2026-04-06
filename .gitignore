@@ -1,2 +1,3 @@
 venv/
 SQLliteTask/Nodes/__pycache__/
+students.db
