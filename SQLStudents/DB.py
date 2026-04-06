@@ -23,7 +23,7 @@ class DataBase:
                             surname TEXT NOT NULL,
                             father_name TEXT NOT NULL,
                             age INTEGER NOT NULL,
-                            grade_mean TEXT NOT NULL ,
+                            grade_mean INTEGER NOT NULL ,
                             FOREIGN KEY (id_level) REFERENCES levels(id_level),
                              FOREIGN KEY (id_group) REFERENCES groups(id_group),
     FOREIGN KEY (id_type_learning) REFERENCES types_learning(id_type_learning)
@@ -42,3 +42,11 @@ class DataBase:
     def executemany(self,sql,params):
         self.cursor.executemany(sql,params)
         self.connection.commit()
+
+    def closeDB(self):
+        self.cursor.execute("DELETE FROM students")
+        self.cursor.execute("DELETE FROM levels")
+        self.cursor.execute("DELETE FROM groups")
+        self.cursor.execute("DELETE FROM types_learning")
+        self.connection.commit()
+        self.connection.close()

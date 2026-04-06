@@ -1,52 +1,27 @@
 from DB import DataBase
+from openpyxl import load_workbook
 
-
-students = [
-    {"name": "Ivan", "surname": "Moskvin", "father_name": "Sergeevich", "age": 20, "grade_mean": 16.7, "id_level": 1, "id_group": 1, "id_type_learning": 1},
-    {"name": "Dmitriy", "surname": "Trubachev", "father_name": "Alexeevich", "age": 22, "grade_mean": 16.7, "id_level": 2, "id_group": 2, "id_type_learning": 2},
-    {"name": "Georgiy", "surname": "Volovikov", "father_name": "Alexandrovich", "age": 21, "grade_mean": 20.1, "id_level": 1, "id_group": 3, "id_type_learning": 1},
-    {"name": "Elena", "surname": "Kuznetsova", "father_name": "Dmitrievna", "age": 23, "grade_mean": 12.3, "id_level": 3, "id_group": 4, "id_type_learning": 2},
-    {"name": "Sergey", "surname": "Volkov", "father_name": "Petrovich", "age": 20, "grade_mean": 13.5, "id_level": 2, "id_group": 4, "id_type_learning": 1},
-]
-
-# Типы обучения
-type_of_learning = [
-    {"id_type_learning": 1, "type_name": "Очная"},
-    {"id_type_learning": 2, "type_name": "Заочная"},
-]
-
-
-groups = [
-    {"id_group": 1, "group_name": "14123-ДБ"},
-    {"id_group": 2, "group_name": "14121-ДБ"},
-    {"id_group": 3, "group_name": "14122-ДБ"},
-    {"id_group": 4, "group_name": "14223-ДБ"},
-]
-
-
-levels = [
-    {"id_level": 1, "level_name": "Бакалавр"},
-    {"id_level": 2, "level_name": "Магистр"},
-    {"id_level": 3, "level_name": "Аспирант"},
-]
+students = load_workbook('Data/students.xlsx').active
+type_of_learning = load_workbook('Data/type_of_learning.xlsx').active
+groups = load_workbook('Data/groups.xlsx').active
+levels = load_workbook('Data/levels.xlsx').active
 
 db = DataBase()
 db.executemany(
     "INSERT OR REPLACE INTO `types_learning` (`id_type_learning`, `type_name`) VALUES (?, ?)",
-    [(t["id_type_learning"], t["type_name"]) for t in type_of_learning],    
-
+    [(t[0], t[1]) for t in type_of_learning.iter_rows(min_row=2, values_only=True)],
 )
 db.executemany(
     "INSERT OR REPLACE INTO `groups` (`id_group`, `group_name`) VALUES (?, ?)",
-    [(g["id_group"], g["group_name"]) for g in groups],
+    [(g[0], g[1]) for g in groups.iter_rows(min_row=2, values_only=True)],
 )
 db.executemany(
     "INSERT OR REPLACE INTO `levels` (`id_level`, `level_name`) VALUES (?, ?)",
-    [(l["id_level"], l["level_name"]) for l in levels],
+    [(l[0], l[1]) for l in levels.iter_rows(min_row=2, values_only=True)],
 )
 db.executemany(
     "INSERT OR REPLACE INTO `students` (`id_level`, `id_group`, `id_type_learning`, `name`, `surname`, `father_name`, `age`, `grade_mean`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",    
-    [(s["id_level"], s["id_group"], s["id_type_learning"], s["name"], s["surname"], s["father_name"], s["age"], s["grade_mean"]) for s in students],
+    [(s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7]) for s in students.iter_rows(min_row=2, values_only=True)],
 )                    
 
 count_students = db.query('''
@@ -76,3 +51,13 @@ JOIN types_learning t ON s.id_type_learning = t.id_type_learning
 print("Кол-во студентов по типу обучения:")
 for type_name, student_count in count_students_by_type:
     print(f"{type_name}: {student_count}")  
+
+mark_max_min = db.query('''
+SELECT MAX(grade_mean) AS max_grade, MIN(grade_mean) AS min_grade, AVG(grade_mean) AS avg_grade FROM students;
+''')
+print(f"Макс. средняя оценка: {mark_max_min [0][0]}, Мин. средняя оценка: {mark_max_min [0][1]}, Средняя оценка: {mark_max_min [0][2]}")  
+
+db.closeDB()
+# mark_max_min [0][1]=np.asarray(mark_max_min [0][1], dtype=np.float64)
+# mark_max_min [0][0]=np.asarray(mark_max_min [0][0], dtype=np.float64)
+# print(f"Макс. средняя оценка: {mark_max_min [0][0]}, Мин. средняя оценка: {mark_max_min [0][1]}")
