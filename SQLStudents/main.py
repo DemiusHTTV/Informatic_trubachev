@@ -24,6 +24,8 @@ db.executemany(
     [(s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7]) for s in students.iter_rows(min_row=2, values_only=True)],
 )                    
 
+
+
 count_students = db.query('''
 SELECT id_student FROM students;
 ''')
@@ -56,6 +58,20 @@ mark_max_min = db.query('''
 SELECT MAX(grade_mean) AS max_grade, MIN(grade_mean) AS min_grade, AVG(grade_mean) AS avg_grade FROM students;
 ''')
 print(f"Макс. средняя оценка: {mark_max_min [0][0]}, Мин. средняя оценка: {mark_max_min [0][1]}, Средняя оценка: {mark_max_min [0][2]}")  
+
+mark_by_type_and_group_and_level = db.query('''
+SELECT t.type_name, g.group_name, l.level_name, AVG(s.grade_mean) AS avg_grade
+FROM students s
+JOIN types_learning t ON s.id_type_learning = t.id_type_learning
+JOIN groups g ON s.id_group = g.id_group
+JOIN levels l ON s.id_level = l.id_level
+GROUP BY t.type_name, g.group_name, l.level_name;
+''')
+print(mark_by_type_and_group_and_level)
+print("Средняя оценка по типу обучения, группе и уровню:")
+for type_name, group_name, level_name, avg_grade in mark_by_type_and_group_and_level:
+    print(f"Тип обучения: {type_name}, Группа: {group_name}, Уровень: {level_name}, Средняя оценка: {avg_grade}")
+
 
 db.closeDB()
 # mark_max_min [0][1]=np.asarray(mark_max_min [0][1], dtype=np.float64)
