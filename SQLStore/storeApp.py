@@ -6,10 +6,12 @@ from database import Database
 
 
 class StoreApp:
+
     def __init__(self, root):
         self.root = root
-        self.root.title("Cистема учета товаров")
+        self.root.title("Система учета товаров")
         self.root.geometry("1000x600")
+
         self.db = Database("store.db")
 
         self.create_tables()
@@ -18,155 +20,193 @@ class StoreApp:
         self.load_categories()
         self.load_products()
 
-        self.current_receipt_id = None
-        self.receipt_items = []
+
 
     def create_tables(self):
         self.db.execute("""
         CREATE TABLE IF NOT EXISTS categories (
             category_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            category_name TEXT NOT NULL UNIQUE
+            category_name TEXT UNIQUE
         )
         """)
 
         self.db.execute("""
         CREATE TABLE IF NOT EXISTS products (
             product_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_name TEXT NOT NULL,
-            category_id INTEGER NOT NULL,
-            price REAL NOT NULL,
-            stock_quantity INTEGER NOT NULL DEFAULT 0,
-            FOREIGN KEY (category_id) REFERENCES categories(category_id)
+            product_name TEXT,
+            category_id INTEGER,
+            price REAL,
+            stock_quantity INTEGER
         )
         """)
 
         self.db.execute("""
         CREATE TABLE IF NOT EXISTS receipts (
             receipt_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            sale_date TEXT NOT NULL,
-            total_amount REAL NOT NULL
+            sale_date TEXT,
+            total_amount REAL
         )
         """)
 
         self.db.execute("""
         CREATE TABLE IF NOT EXISTS receipt_items (
             item_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            receipt_id INTEGER NOT NULL,
-            product_id INTEGER NOT NULL,
-            quantity INTEGER NOT NULL,
-            price_per_unit REAL NOT NULL,
-            total_price REAL NOT NULL,
-            FOREIGN KEY (receipt_id) REFERENCES receipts(receipt_id),
-            FOREIGN KEY (product_id) REFERENCES products(product_id)
+            receipt_id INTEGER,
+            product_id INTEGER,
+            quantity INTEGER,
+            price_per_unit REAL,
+            total_price REAL
         )
         """)
 
     def insert_sample_data(self):
-        row = self.db.query_one("SELECT COUNT(*) FROM categories")
-        if row and row[0] != 0:
+        if self.db.query_one("SELECT COUNT(*) FROM categories")[0] != 0:
             return
 
         self.db.executemany(
             "INSERT INTO categories (category_name) VALUES (?)",
-            [
-                ("Напитки",),
-                ("Молочные продукты",),
-                ("Хлебобулочные изделия",),
-                ("Консервы",),
-            ]
+            [("Напитки",), ("Еда",)]
         )
 
         self.db.executemany(
             "INSERT INTO products (product_name, category_id, price, stock_quantity) VALUES (?, ?, ?, ?)",
             [
-                ("Вода минеральная", 1, 25.50, 100),
-                ("Сок апельсиновый", 1, 89.90, 50),
-                ("Молоко 2.5%", 2, 65.00, 80),
-                ("Кефир 1%", 2, 72.50, 60),
-                ("Хлеб белый", 3, 45.00, 120),
-                ("Батон нарезной", 3, 52.00, 90),
-                ("Горошек зеленый", 4, 68.00, 40),
-                ("Кукуруза консервированная", 4, 75.00, 35),
+                ("Вода", 1, 25, 100),
+                ("Сок", 1, 80, 50),
+                ("Хлеб", 2, 40, 70),
             ]
         )
 
+   
+
     def create_widgets(self):
-        self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill=BOTH, expand=True)
+        notebook = ttk.Notebook(self.root)
+        notebook.pack(fill=BOTH, expand=True)
 
-        self.sales_tab = ttk.Frame(self.notebook)
-        self.products_tab = ttk.Frame(self.notebook)
-        self.reports_tab = ttk.Frame(self.notebook)
+        self.sales_tab = Frame(notebook)
+        self.products_tab = Frame(notebook)
+        self.reports_tab = Frame(notebook)
 
-        self.notebook.add(self.sales_tab, text="Продажи")
-        self.notebook.add(self.products_tab, text="Товары")
-        self.notebook.add(self.reports_tab, text="Отчеты")
+        notebook.add(self.sales_tab, text="Продажи")
+        notebook.add(self.products_tab, text="Товары")
+        notebook.add(self.reports_tab, text="Отчеты")
 
         self.create_sales_tab()
         self.create_products_tab()
         self.create_reports_tab()
 
+
+
     def create_sales_tab(self):
-        products_frame = ttk.LabelFrame(self.sales_tab, text="Товары")
-        products_frame.pack(side=LEFT, fill=BOTH, expand=True, padx=5, pady=5)
+
+        left = Frame(self.sales_tab, width=800)
+        left.pack(side=LEFT, fill=BOTH, expand=False)
+        left.pack_propagate(False)
 
         self.products_tree = ttk.Treeview(
-            products_frame,
-            columns=('id', 'name', 'category', 'price', 'quantity'),
-            show='headings'
+            left,
+            columns=("id", "name", "cat", "price", "qty"),
+            show="headings"
         )
-        for col, text in zip(('id','name','category','price','quantity'),
-                             ('ID','Название','Категория','Цена','Остаток')):
-            self.products_tree.heading(col, text=text)
+
+        headers = ["ID", "Название", "Категория", "Цена", "Остаток"]
+
+        for i, col in enumerate(("id", "name", "cat", "price", "qty")):
+            self.products_tree.heading(col, text=headers[i])
+            self.products_tree.column(col, width=110)
 
         self.products_tree.pack(fill=BOTH, expand=True)
 
-        cart_frame = ttk.LabelFrame(self.sales_tab, text="Чек")
-        cart_frame.pack(side=RIGHT, fill=BOTH, expand=True, padx=5, pady=5)
+
+        right = Frame(self.sales_tab, width=380, bg="#2b2b2b")
+        right.pack(side=RIGHT, fill=Y, expand=False)
+        right.pack_propagate(False)
 
         self.cart_tree = ttk.Treeview(
-            cart_frame,
-            columns=('id','name','price','quantity','total'),
-            show='headings'
+            right,
+            columns=("id", "name", "price", "qty", "sum"),
+            show="headings",
+            height=15
         )
-        for col, text in zip(('id','name','price','quantity','total'),
-                             ('ID','Название','Цена','Кол-во','Сумма')):
-            self.cart_tree.heading(col, text=text)
 
-        self.cart_tree.pack(fill=BOTH, expand=True)
+        headers2 = ["ID", "Товар", "Цена", "Кол-во", "Сумма"]
 
-        btn_frame = ttk.Frame(cart_frame)
-        btn_frame.pack()
+        for i, col in enumerate(("id", "name", "price", "qty", "sum")):
+            self.cart_tree.heading(col, text=headers2[i])
+            self.cart_tree.column(col, width=100)
 
-        ttk.Button(btn_frame, text="Добавить", command=self.add_to_cart).pack(side=LEFT)
-        ttk.Button(btn_frame, text="Удалить", command=self.remove_from_cart).pack(side=LEFT)
-        ttk.Button(btn_frame, text="Оформить", command=self.process_sale).pack(side=LEFT)
+        self.cart_tree.pack(fill=BOTH, padx=5, pady=5)
 
+        btns = Frame(right, bg="#2b2b2b")
+        btns.pack(fill=X, pady=10)
+
+        Button(btns, text="Добавить", command=self.add_to_cart, width=12, height=2).pack(side=LEFT, padx=5)
+        Button(btns, text="Удалить", command=self.remove_from_cart, width=12, height=2).pack(side=LEFT, padx=5)
+        Button(btns, text="ОК", command=self.process_sale, width=25, height=2).pack(side=LEFT, padx=5)
+
+        
     def create_products_tab(self):
+
+        top = Frame(self.products_tab)
+        top.pack()
+
+        self.name_entry = Entry(top)
+        self.name_entry.pack(side=LEFT)
+        self.name_entry.insert(0, "Название")
+
+        self.price_entry = Entry(top)
+        self.price_entry.pack(side=LEFT)
+        self.price_entry.insert(0, "Цена")
+
+        self.qty_entry = Entry(top)
+        self.qty_entry.pack(side=LEFT)
+        self.qty_entry.insert(0, "Кол-во")
+
+        Button(top, text="Добавить товар", command=self.add_product).pack(side=LEFT)
+
         self.products_management_tree = ttk.Treeview(
             self.products_tab,
-            columns=('id','name','category','price','quantity'),
-            show='headings'
+            columns=("id", "name", "cat", "price", "qty"),
+            show="headings"
         )
-        for col in ('id','name','category','price','quantity'):
+
+        for col in ("id", "name", "cat", "price", "qty"):
             self.products_management_tree.heading(col, text=col)
 
         self.products_management_tree.pack(fill=BOTH, expand=True)
 
+
+
     def create_reports_tab(self):
+
+        top = Frame(self.reports_tab)
+        top.pack()
+
+        self.date_entry = Entry(top)
+        self.date_entry.pack(side=LEFT)
+
+        Button(top, text="Показать",
+               command=lambda: self.load_report(self.date_entry.get())
+               ).pack(side=LEFT)
+
         self.report_tree = ttk.Treeview(
             self.reports_tab,
-            columns=('name','quantity','total'),
-            show='headings'
+            columns=("name", "qty", "sum"),
+            show="headings"
         )
+
+        for col in ("name", "qty", "sum"):
+            self.report_tree.heading(col, text=col)
+
         self.report_tree.pack(fill=BOTH, expand=True)
 
+
     def load_categories(self):
-        data = self.db.query("SELECT category_id, category_name FROM categories")
-        self.categories_dict = {name: cid for cid, name in data}
+        data = self.db.query("SELECT * FROM categories")
+        self.categories = {name: cid for cid, name in data}
 
     def load_products(self):
-        products = self.db.query("""
+        data = self.db.query("""
         SELECT p.product_id, p.product_name, c.category_name, p.price, p.stock_quantity
         FROM products p
         JOIN categories c ON p.category_id = c.category_id
@@ -174,15 +214,21 @@ class StoreApp:
 
         for tree in (self.products_tree, self.products_management_tree):
             tree.delete(*tree.get_children())
-            for row in products:
-                tree.insert('', END, values=row)
+            for row in data:
+                tree.insert("", END, values=row)
 
     def add_to_cart(self):
         sel = self.products_tree.focus()
         if not sel:
             return
-        values = self.products_tree.item(sel)['values']
-        self.cart_tree.insert('', END, values=(values[0], values[1], values[3], 1, values[3]))
+
+        v = self.products_tree.item(sel)["values"]
+
+        if v[4] <= 0:
+            messagebox.showerror("Ошибка", "Нет на складе")
+            return
+
+        self.cart_tree.insert("", END, values=(v[0], v[1], v[3], 1, v[3]))
 
     def remove_from_cart(self):
         sel = self.cart_tree.focus()
@@ -190,7 +236,72 @@ class StoreApp:
             self.cart_tree.delete(sel)
 
     def process_sale(self):
-        messagebox.showinfo("Продажа", "Упрощенная версия: продажа выполнена")
+        items = self.cart_tree.get_children()
+        if not items:
+            return
+
+        total = 0
+        sale = []
+
+        for i in items:
+            v = self.cart_tree.item(i)["values"]
+            total += float(v[4])
+            sale.append(v)
+
+        date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        self.db.execute(
+            "INSERT INTO receipts (sale_date, total_amount) VALUES (?, ?)",
+            (date, total)
+        )
+
+        rid = self.db.query_one("SELECT last_insert_rowid()")[0]
+
+        for v in sale:
+            self.db.execute("""
+            INSERT INTO receipt_items
+            (receipt_id, product_id, quantity, price_per_unit, total_price)
+            VALUES (?, ?, ?, ?, ?)
+            """, (rid, v[0], v[3], v[2], v[4]))
+
+            self.db.execute("""
+            UPDATE products
+            SET stock_quantity = stock_quantity - ?
+            WHERE product_id = ?
+            """, (v[3], v[0]))
+
+        messagebox.showinfo("OK", f"Чек {rid}")
+
+        self.cart_tree.delete(*self.cart_tree.get_children())
+        self.load_products()
+
+    def load_report(self, date):
+        data = self.db.query("""
+        SELECT p.product_name, SUM(ri.quantity), SUM(ri.total_price)
+        FROM receipt_items ri
+        JOIN receipts r ON ri.receipt_id = r.receipt_id
+        JOIN products p ON ri.product_id = p.product_id
+        WHERE DATE(r.sale_date) = ?
+        GROUP BY p.product_name
+        """, (date,))
+
+        self.report_tree.delete(*self.report_tree.get_children())
+
+        for row in data:
+            self.report_tree.insert("", END, values=row)
+
+    def add_product(self):
+        name = self.name_entry.get()
+        price = float(self.price_entry.get())
+        qty = int(self.qty_entry.get())
+
+        self.db.execute("""
+        INSERT INTO products (product_name, category_id, price, stock_quantity)
+        VALUES (?, ?, ?, ?)
+        """, (name, 1, price, qty))
+
+        self.load_products()
+        messagebox.showinfo("OK", "Добавлено")
 
     def __del__(self):
         self.db.close()
