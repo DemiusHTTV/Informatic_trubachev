@@ -2,11 +2,6 @@ import sqlite3
 
 
 class Database:
-    """
-    Минимальный класс-обертка над sqlite3:
-    connect / execute / query / close + обработка ошибок.
-    Вся предметная логика (таблицы/запросы) должна быть в main.py.
-    """
 
     def __init__(self, db_path: str):
         self.conn = sqlite3.connect(db_path)
