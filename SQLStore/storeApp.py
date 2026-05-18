@@ -217,18 +217,174 @@ class StoreApp:
             for row in data:
                 tree.insert("", END, values=row)
 
-    def add_to_cart(self):
-        sel = self.products_tree.focus()
-        if not sel:
+def add_to_cart(self):
+    sel = self.products_tree.focus()
+
+    if not sel:
+        return
+
+    v = self.products_tree.item(sel)["values"]
+
+    product_id = v[0]
+    name = v[1]
+    price = float(v[3])
+    stock = int(v[4])
+
+    # Проверяем есть ли уже товар в корзине
+    for item in self.cart_tree.get_children():
+
+        cart_values = self.cart_tree.item(item)["values"]
+
+        # Если товар уже есть
+        if cart_values[0] == product_id:
+
+            current_qty = int(cart_values[3])
+
+            # Проверяем остаток
+            if current_qty >= stock:
+                messagebox.showerror(
+                    "Ошибка",
+                    f"На складе только {stock} шт."
+                )
+                return
+
+            new_qty = current_qty + 1
+            new_sum = new_qty * price
+
+            # Обновляем строку корзины
+            self.cart_tree.item(
+                item,
+                values=(
+                    product_id,
+                    name,
+                    price,
+                    new_qty,
+                    new_sum
+                )
+            )
+
             return
 
-        v = self.products_tree.item(sel)["values"]
+    # Если товара нет в корзине
+    if stock <= 0:
+        messagebox.showerror("Ошибка", "Нет на складе")
+        return
 
-        if v[4] <= 0:
-            messagebox.showerror("Ошибка", "Нет на складе")
+    self.cart_tree.insert(
+        "",
+        END,
+        values=(
+            product_id,
+            name,
+            price,
+            1,
+            price
+        )
+    )
+
+
+def process_sale(self):
+
+    items = self.cart_tree.get_children()
+
+    if not items:
+        return
+
+    total = 0
+    sale = []
+
+    for i in items:
+        v = self.cart_tree.item(i)["values"]
+        product_id = v[0]
+        qty = int(v[3])
+        stock = self.db.query_one(
+            """
+            SELECT stock_quantity
+            FROM products
+            WHERE product_id = ?
+            """,
+            (product_id,)
+        )[0]
+
+        if qty > stock:
+            messagebox.showerror(
+                "Ошибка",
+                f"Недостаточно товара ID {product_id}.\n"
+                f"На складе: {stock}"
+            )
             return
 
-        self.cart_tree.insert("", END, values=(v[0], v[1], v[3], 1, v[3]))
+        total += float(v[4])
+        sale.append(v)
+
+    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+    self.db.execute(
+        """
+        INSERT INTO receipts (sale_date, total_amount)
+        VALUES (?, ?)
+        """,
+        (date, total)
+    )
+
+    rid = self.db.query_one(
+        "SELECT last_insert_rowid()"
+    )[0]
+
+
+    for v in sale:
+
+        product_id = v[0]
+        qty = int(v[3])
+        price = float(v[2])
+        item_total = float(v[4])
+
+        self.db.execute(
+            """
+            INSERT INTO receipt_items
+            (
+                receipt_id,
+                product_id,
+                quantity,
+                price_per_unit,
+                total_price
+            )
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                rid,
+                product_id,
+                qty,
+                price,
+                item_total
+            )
+        )
+
+
+        self.db.execute(
+            """
+            UPDATE products
+            SET stock_quantity = stock_quantity - ?
+            WHERE product_id = ?
+            """,
+            (
+                qty,
+                product_id
+            )
+        )
+
+    messagebox.showinfo(
+        "OK",
+        f"Чек {rid} успешно оформлен"
+    )
+
+    self.cart_tree.delete(
+        *self.cart_tree.get_children()
+    )
+
+
+    self.load_products()
 
     def remove_from_cart(self):
         sel = self.cart_tree.focus()
