@@ -20,8 +20,6 @@ class StoreApp:
         self.load_categories()
         self.load_products()
 
-
-
     def create_tables(self):
         self.db.execute("""
         CREATE TABLE IF NOT EXISTS categories (
@@ -77,8 +75,6 @@ class StoreApp:
             ]
         )
 
-   
-
     def create_widgets(self):
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill=BOTH, expand=True)
@@ -94,8 +90,6 @@ class StoreApp:
         self.create_sales_tab()
         self.create_products_tab()
         self.create_reports_tab()
-
-
 
     def create_sales_tab(self):
 
@@ -116,7 +110,6 @@ class StoreApp:
             self.products_tree.column(col, width=110)
 
         self.products_tree.pack(fill=BOTH, expand=True)
-
 
         right = Frame(self.sales_tab, width=380, bg="#2b2b2b")
         right.pack(side=RIGHT, fill=Y, expand=False)
@@ -144,7 +137,6 @@ class StoreApp:
         Button(btns, text="Удалить", command=self.remove_from_cart, width=12, height=2).pack(side=LEFT, padx=5)
         Button(btns, text="ОК", command=self.process_sale, width=25, height=2).pack(side=LEFT, padx=5)
 
-        
     def create_products_tab(self):
 
         top = Frame(self.products_tab)
@@ -175,8 +167,6 @@ class StoreApp:
 
         self.products_management_tree.pack(fill=BOTH, expand=True)
 
-
-
     def create_reports_tab(self):
 
         top = Frame(self.reports_tab)
@@ -185,9 +175,11 @@ class StoreApp:
         self.date_entry = Entry(top)
         self.date_entry.pack(side=LEFT)
 
-        Button(top, text="Показать",
-               command=lambda: self.load_report(self.date_entry.get())
-               ).pack(side=LEFT)
+        Button(
+            top,
+            text="Показать",
+            command=lambda: self.load_report(self.date_entry.get())
+        ).pack(side=LEFT)
 
         self.report_tree = ttk.Treeview(
             self.reports_tab,
@@ -199,7 +191,6 @@ class StoreApp:
             self.report_tree.heading(col, text=col)
 
         self.report_tree.pack(fill=BOTH, expand=True)
-
 
     def load_categories(self):
         data = self.db.query("SELECT * FROM categories")
@@ -214,185 +205,81 @@ class StoreApp:
 
         for tree in (self.products_tree, self.products_management_tree):
             tree.delete(*tree.get_children())
+
             for row in data:
                 tree.insert("", END, values=row)
 
-def add_to_cart(self):
-    sel = self.products_tree.focus()
+    def add_to_cart(self):
 
-    if not sel:
-        return
+        sel = self.products_tree.focus()
 
-    v = self.products_tree.item(sel)["values"]
+        if not sel:
+            return
 
-    product_id = v[0]
-    name = v[1]
-    price = float(v[3])
-    stock = int(v[4])
+        v = self.products_tree.item(sel)["values"]
 
-    # Проверяем есть ли уже товар в корзине
-    for item in self.cart_tree.get_children():
+        product_id = v[0]
+        name = v[1]
+        price = float(v[3])
+        stock = int(v[4])
 
-        cart_values = self.cart_tree.item(item)["values"]
+        for item in self.cart_tree.get_children():
 
-        # Если товар уже есть
-        if cart_values[0] == product_id:
+            cart_values = self.cart_tree.item(item)["values"]
 
-            current_qty = int(cart_values[3])
+            if cart_values[0] == product_id:
 
-            # Проверяем остаток
-            if current_qty >= stock:
-                messagebox.showerror(
-                    "Ошибка",
-                    f"На складе только {stock} шт."
+                current_qty = int(cart_values[3])
+
+                if current_qty >= stock:
+                    messagebox.showerror(
+                        "Ошибка",
+                        f"На складе только {stock} шт."
+                    )
+                    return
+
+                new_qty = current_qty + 1
+                new_sum = new_qty * price
+
+                self.cart_tree.item(
+                    item,
+                    values=(
+                        product_id,
+                        name,
+                        price,
+                        new_qty,
+                        new_sum
+                    )
                 )
+
                 return
 
-            new_qty = current_qty + 1
-            new_sum = new_qty * price
-
-            # Обновляем строку корзины
-            self.cart_tree.item(
-                item,
-                values=(
-                    product_id,
-                    name,
-                    price,
-                    new_qty,
-                    new_sum
-                )
-            )
-
+        if stock <= 0:
+            messagebox.showerror("Ошибка", "Нет на складе")
             return
 
-    # Если товара нет в корзине
-    if stock <= 0:
-        messagebox.showerror("Ошибка", "Нет на складе")
-        return
-
-    self.cart_tree.insert(
-        "",
-        END,
-        values=(
-            product_id,
-            name,
-            price,
-            1,
-            price
-        )
-    )
-
-
-def process_sale(self):
-
-    items = self.cart_tree.get_children()
-
-    if not items:
-        return
-
-    total = 0
-    sale = []
-
-    for i in items:
-        v = self.cart_tree.item(i)["values"]
-        product_id = v[0]
-        qty = int(v[3])
-        stock = self.db.query_one(
-            """
-            SELECT stock_quantity
-            FROM products
-            WHERE product_id = ?
-            """,
-            (product_id,)
-        )[0]
-
-        if qty > stock:
-            messagebox.showerror(
-                "Ошибка",
-                f"Недостаточно товара ID {product_id}.\n"
-                f"На складе: {stock}"
-            )
-            return
-
-        total += float(v[4])
-        sale.append(v)
-
-    date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-    self.db.execute(
-        """
-        INSERT INTO receipts (sale_date, total_amount)
-        VALUES (?, ?)
-        """,
-        (date, total)
-    )
-
-    rid = self.db.query_one(
-        "SELECT last_insert_rowid()"
-    )[0]
-
-
-    for v in sale:
-
-        product_id = v[0]
-        qty = int(v[3])
-        price = float(v[2])
-        item_total = float(v[4])
-
-        self.db.execute(
-            """
-            INSERT INTO receipt_items
-            (
-                receipt_id,
+        self.cart_tree.insert(
+            "",
+            END,
+            values=(
                 product_id,
-                quantity,
-                price_per_unit,
-                total_price
-            )
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                rid,
-                product_id,
-                qty,
+                name,
                 price,
-                item_total
+                1,
+                price
             )
         )
-
-
-        self.db.execute(
-            """
-            UPDATE products
-            SET stock_quantity = stock_quantity - ?
-            WHERE product_id = ?
-            """,
-            (
-                qty,
-                product_id
-            )
-        )
-
-    messagebox.showinfo(
-        "OK",
-        f"Чек {rid} успешно оформлен"
-    )
-
-    self.cart_tree.delete(
-        *self.cart_tree.get_children()
-    )
-
-
-    self.load_products()
 
     def remove_from_cart(self):
         sel = self.cart_tree.focus()
+
         if sel:
             self.cart_tree.delete(sel)
 
     def process_sale(self):
+
         items = self.cart_tree.get_children()
+
         if not items:
             return
 
@@ -400,35 +287,95 @@ def process_sale(self):
         sale = []
 
         for i in items:
+
             v = self.cart_tree.item(i)["values"]
+
+            product_id = v[0]
+            qty = int(v[3])
+
+            stock = self.db.query_one(
+                """
+                SELECT stock_quantity
+                FROM products
+                WHERE product_id = ?
+                """,
+                (product_id,)
+            )[0]
+
+            if qty > stock:
+                messagebox.showerror(
+                    "Ошибка",
+                    f"Недостаточно товара ID {product_id}.\n"
+                    f"На складе: {stock}"
+                )
+                return
+
             total += float(v[4])
             sale.append(v)
 
         date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         self.db.execute(
-            "INSERT INTO receipts (sale_date, total_amount) VALUES (?, ?)",
+            """
+            INSERT INTO receipts (sale_date, total_amount)
+            VALUES (?, ?)
+            """,
             (date, total)
         )
 
-        rid = self.db.query_one("SELECT last_insert_rowid()")[0]
+        rid = self.db.query_one(
+            "SELECT last_insert_rowid()"
+        )[0]
 
         for v in sale:
-            self.db.execute("""
-            INSERT INTO receipt_items
-            (receipt_id, product_id, quantity, price_per_unit, total_price)
-            VALUES (?, ?, ?, ?, ?)
-            """, (rid, v[0], v[3], v[2], v[4]))
 
-            self.db.execute("""
-            UPDATE products
-            SET stock_quantity = stock_quantity - ?
-            WHERE product_id = ?
-            """, (v[3], v[0]))
+            product_id = v[0]
+            qty = int(v[3])
+            price = float(v[2])
+            item_total = float(v[4])
 
-        messagebox.showinfo("OK", f"Чек {rid}")
+            self.db.execute(
+                """
+                INSERT INTO receipt_items
+                (
+                    receipt_id,
+                    product_id,
+                    quantity,
+                    price_per_unit,
+                    total_price
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    rid,
+                    product_id,
+                    qty,
+                    price,
+                    item_total
+                )
+            )
 
-        self.cart_tree.delete(*self.cart_tree.get_children())
+            self.db.execute(
+                """
+                UPDATE products
+                SET stock_quantity = stock_quantity - ?
+                WHERE product_id = ?
+                """,
+                (
+                    qty,
+                    product_id
+                )
+            )
+
+        messagebox.showinfo(
+            "OK",
+            f"Чек {rid} успешно оформлен"
+        )
+
+        self.cart_tree.delete(
+            *self.cart_tree.get_children()
+        )
+
         self.load_products()
 
     def load_report(self, date):
@@ -447,17 +394,23 @@ def process_sale(self):
             self.report_tree.insert("", END, values=row)
 
     def add_product(self):
+
         name = self.name_entry.get()
         price = float(self.price_entry.get())
         qty = int(self.qty_entry.get())
 
         self.db.execute("""
-        INSERT INTO products (product_name, category_id, price, stock_quantity)
+        INSERT INTO products
+        (product_name, category_id, price, stock_quantity)
         VALUES (?, ?, ?, ?)
         """, (name, 1, price, qty))
 
         self.load_products()
-        messagebox.showinfo("OK", "Добавлено")
+
+        messagebox.showinfo(
+            "OK",
+            "Добавлено"
+        )
 
     def __del__(self):
         self.db.close()
